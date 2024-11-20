@@ -1,0 +1,1 @@
+vector database, langchain, google gemini, streamlit
