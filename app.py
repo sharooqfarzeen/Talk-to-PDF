@@ -3,27 +3,35 @@ from dotenv import load_dotenv
 
 import streamlit as st
 
-import google.generativeai as genai
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from preprocessing import get_text, get_chunks
 from vector_store import create_vector_store
 from chat import get_response
-
-# Fetching API Key
-load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=api_key)
+from get_api import get_api
 
 def main():
-    # Model used for embedding
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    
+
     # Streamlit app
 
     # Title
     st.set_page_config(page_title="Chat with PDF")
+
+    # Loading API Keys
+    load_dotenv()
+    # Check if the API key is set
+    if "api_keys" not in st.session_state:
+        st.session_state.api_keys = {}
+        if "OPENAI_API_KEY" not in os.environ or "GOOGLE_API_KEY" not in os.environ:
+            get_api()
+        else:
+            st.session_state.api_keys["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
+            st.session_state.api_keys["GOOGLE_API_KEY"] = os.environ["GOOGLE_API_KEY"]
+    
+    # Model used for embedding
+    if "GOOGLE_API_KEY" in st.session_state.api_keys:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=st.session_state.api_keys["GOOGLE_API_KEY"])
 
     # Header
     st.title("Current Thread")
@@ -76,25 +84,38 @@ def main():
         
             # If prompt has text
             if user_question:
-                # Display user message in chat message container
-                st.chat_message("user").markdown(user_question)
-                # Add user message to chat history
-                st.session_state.messages.append({"role": "user", "content": user_question})
-                # Add user message to chat context for model
-                st.session_state.chat_context.append({"role": "user", "parts": user_question})
-            
-                
-                # Doing similarity search to find context from our vecctor store
-                context = st.session_state.vector_store.similarity_search(user_question, k=10)            
-                # Querying LLM for answer
-                response = get_response(context, user_question, st.session_state.chat_context)
-                # Display assistant response in chat message container
-                st.chat_message("assistant").markdown(response)
+                if not st.session_state.vector_store:
+                    # Display user message in chat message container
+                    st.chat_message("user").markdown(user_question)
+                    # Add user message to chat history
+                    st.session_state.messages.append({"role": "user", "content": user_question})
 
-                # Add assistant response to chat history
-                st.session_state.messages.append({"role": "assistant", "content": response})
-                # Add assistant response to chat context for model
-                st.session_state.chat_context.append({"role": "model", "parts": response})
+                    # Display assistant response in chat message container
+                    st.chat_message("assistant").markdown("Please add documents to continue.")
+
+                    # Add assistant response to chat history
+                    st.session_state.messages.append({"role": "assistant", "content": "Please add documents to continue."})            
+                
+                else:    
+                    # Display user message in chat message container
+                    st.chat_message("user").markdown(user_question)
+                    # Add user message to chat history
+                    st.session_state.messages.append({"role": "user", "content": user_question})
+                    # Add user message to chat context for model
+                    st.session_state.chat_context.append({"role": "user", "parts": user_question})
+                
+                    
+                    # Doing similarity search to find context from our vecctor store
+                    context = st.session_state.vector_store.similarity_search(user_question, k=10)            
+                    # Querying LLM for answer
+                    response = get_response(context, user_question, st.session_state.chat_context, st.session_state.api_keys["OPENAI_API_KEY"])
+                    # Display assistant response in chat message container
+                    st.chat_message("assistant").markdown(response)
+
+                    # Add assistant response to chat history
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    # Add assistant response to chat context for model
+                    st.session_state.chat_context.append({"role": "model", "parts": response})
 
 if __name__ == "__main__":
     main()
