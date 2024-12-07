@@ -1,4 +1,4 @@
-## [Try the app on streamlit](https://talk-to-pdf-rag.streamlit.app/)
+## [Try the app on Streamlit](https://talk-to-pdf-rag.streamlit.app/)
 
 **OR**
 
