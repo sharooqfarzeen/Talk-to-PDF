@@ -19,7 +19,8 @@ def main():
     st.set_page_config(page_title="Chat with PDF")
 
     # Loading API Keys
-    load_dotenv()
+    load_dotenv(override=True)
+    
     # Check if the API key is set
     if "api_keys" not in st.session_state:
         st.session_state.api_keys = {}
